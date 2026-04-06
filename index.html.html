@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>VAULT-TEC TERMINAL — VAULT 850</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --green:#00ff41;--green-dim:#00cc33;--green-dark:#003a0e;
+  --green-glow:#00ff4133;--amber:#f39c12;--red:#e74c3c;
+  --bg:#020a02;--surface:#040f04;--surface2:#071407;
+}
+html,body{background:var(--bg);min-height:100vh;overflow-x:hidden;}
+body{
+  font-family:'Share Tech Mono',monospace;color:var(--green);
+  display:flex;flex-direction:column;align-items:center;
+  min-height:100vh;padding:1rem;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,65,0.015) 2px,rgba(0,255,65,0.015) 4px),var(--bg);
+}
+.scanline{position:fixed;top:0;left:0;right:0;height:4px;background:rgba(0,255,65,0.08);animation:scan 6s linear infinite;pointer-events:none;z-index:999;}
+@keyframes scan{0%{top:-4px;}100%{top:100vh;}}
+.crt{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:998;background:radial-gradient(ellipse at center,transparent 60%,rgba(0,0,0,0.6) 100%);}
+
+.terminal{width:100%;max-width:700px;border:1px solid var(--green-dim);background:var(--surface);padding:1.5rem;box-shadow:0 0 50px var(--green-glow),inset 0 0 50px rgba(0,0,0,0.5);position:relative;margin:auto;}
+.terminal::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.08) 3px,rgba(0,0,0,0.08) 4px);pointer-events:none;z-index:0;}
+.terminal>*{position:relative;z-index:1;}
+
+/* HEADER */
+.t-header{text-align:center;border-bottom:1px solid var(--green-dark);padding-bottom:1rem;margin-bottom:1.5rem;}
+.vault-logo{font-size:10px;letter-spacing:0.2em;color:var(--green-dim);margin-bottom:0.5rem;}
+.t-title{font-family:'Oswald',sans-serif;font-size:26px;color:var(--green);letter-spacing:0.08em;margin-bottom:0.25rem;}
+.t-sub{font-size:11px;letter-spacing:0.15em;color:var(--green-dim);}
+.blink{animation:blink 1.2s step-end infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+
+/* SCREENS */
+.screen{display:none;}
+.screen.active{display:block;animation:fadeIn 0.3s ease;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+
+/* BOOT */
+.boot-line{font-size:12px;color:var(--green-dim);margin-bottom:5px;opacity:0;letter-spacing:0.04em;}
+.boot-line.show{animation:appear 0.15s ease forwards;}
+@keyframes appear{to{opacity:1;}}
+.boot-line.warn{color:var(--amber);}
+.boot-line.title{color:var(--green);font-family:'Oswald',sans-serif;font-size:16px;letter-spacing:0.1em;}
+
+/* DIRECTORY */
+.dir-header{margin-bottom:1.5rem;}
+.dir-header p{font-size:12px;color:var(--green-dim);line-height:1.7;margin-bottom:0.5rem;}
+.dir-stats{font-size:11px;color:var(--amber);letter-spacing:0.08em;margin-bottom:1rem;}
+.dir-divider{border:none;border-top:1px solid var(--green-dark);margin-bottom:1.5rem;}
+
+.operative-list{display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem;}
+.op-entry{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;border:1px solid var(--green-dark);
+  background:var(--surface2);cursor:pointer;
+  transition:all 0.15s;gap:12px;
+}
+.op-entry:hover{border-color:var(--green);background:var(--green-glow);box-shadow:0 0 10px var(--green-glow);}
+.op-entry.accessed{border-color:var(--green-dim);opacity:0.7;}
+.op-left{display:flex;align-items:center;gap:12px;flex:1;}
+.op-arrow{font-size:12px;color:var(--green-dim);}
+.op-name{font-family:'Oswald',sans-serif;font-size:16px;color:var(--green);letter-spacing:0.06em;}
+.op-title{font-size:10px;color:var(--green-dim);letter-spacing:0.08em;margin-top:2px;}
+.op-status{font-size:11px;letter-spacing:0.1em;white-space:nowrap;}
+.op-status.locked{color:var(--red);}
+.op-status.accessed{color:var(--green-dim);}
+
+.dir-footer{font-size:11px;color:#005a15;text-align:center;letter-spacing:0.08em;line-height:1.7;}
+
+/* BACK BTN */
+.back-btn{display:block;width:100%;padding:10px;border:1px solid var(--green-dark);background:transparent;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--green-dim);cursor:pointer;letter-spacing:0.1em;transition:all 0.15s;text-align:left;margin-bottom:1.5rem;}
+.back-btn:hover{border-color:var(--green);color:var(--green);}
+
+/* OPERATIVE HEADER */
+.op-terminal-header{border-bottom:1px solid var(--green-dark);padding-bottom:1rem;margin-bottom:1.5rem;}
+.op-terminal-header .op-label{font-size:10px;letter-spacing:0.2em;color:var(--green-dim);margin-bottom:0.25rem;}
+.op-terminal-header .op-hname{font-family:'Oswald',sans-serif;font-size:20px;color:var(--green);letter-spacing:0.06em;}
+
+/* BOOT SEQUENCE */
+.op-boot-lines{margin-bottom:1.5rem;}
+.boot-btn{display:block;width:100%;padding:12px;border:1px solid var(--green);background:transparent;font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--green);cursor:pointer;letter-spacing:0.1em;transition:all 0.15s;}
+.boot-btn:hover{background:var(--green-glow);box-shadow:0 0 15px var(--green-glow);}
+
+/* LOCK */
+.lock-status{text-align:center;margin-bottom:1rem;}
+.pins-label{font-size:11px;color:var(--green-dim);margin-bottom:0.5rem;letter-spacing:0.1em;}
+.pin-icons{display:flex;justify-content:center;gap:8px;margin-bottom:0.5rem;}
+.pin-icon{width:28px;height:8px;background:var(--green-dim);border-radius:2px;transition:all 0.3s;}
+.pin-icon.broken{background:var(--red);opacity:0.4;}
+.lock-msg{font-size:11px;color:var(--green-dim);letter-spacing:0.05em;min-height:16px;text-align:center;}
+.lock-area{display:flex;flex-direction:column;align-items:center;padding:1.5rem 0;gap:1.5rem;}
+.cylinder-wrap{position:relative;width:130px;height:130px;}
+.cylinder-bg{width:130px;height:130px;border-radius:50%;border:3px solid var(--green-dim);background:var(--surface2);position:relative;}
+.cylinder-inner{width:86px;height:86px;border-radius:50%;border:2px solid var(--green-dark);background:var(--surface);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);transition:transform 0.08s ease;}
+.cylinder-notch{width:8px;height:22px;background:var(--green);position:absolute;top:5px;left:50%;transform:translateX(-50%);border-radius:2px;}
+.keyhole-wrap{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+.keyhole-circle{width:14px;height:14px;border-radius:50%;background:var(--green-dark);border:1px solid var(--green-dim);}
+.keyhole-slot{width:6px;height:10px;background:var(--green-dark);margin:0 auto;border:1px solid var(--green-dim);border-top:none;}
+.pin-area{width:100%;display:flex;flex-direction:column;align-items:center;gap:0.75rem;}
+.pin-track{width:85%;height:14px;background:var(--surface2);border:1px solid var(--green-dark);border-radius:7px;position:relative;touch-action:none;}
+.pin-handle{width:28px;height:28px;background:var(--green-dim);border-radius:50%;position:absolute;top:50%;transform:translateY(-50%);left:0;border:2px solid var(--green);cursor:grab;box-shadow:0 0 8px var(--green-glow);touch-action:none;}
+.pin-handle.hot{background:var(--amber);border-color:var(--amber);box-shadow:0 0 14px rgba(243,156,18,0.6);}
+.pin-handle.perfect{background:var(--green);border-color:#fff;box-shadow:0 0 20px var(--green-glow);}
+.screw-btn{padding:12px 28px;border:1px solid var(--green);background:transparent;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--green);cursor:pointer;letter-spacing:0.08em;transition:all 0.15s;border-radius:2px;user-select:none;-webkit-user-select:none;touch-action:none;}
+.screw-btn.pressing{background:var(--green-glow);box-shadow:0 0 15px var(--green-glow);}
+.lock-hint{font-size:11px;color:var(--green-dim);text-align:center;letter-spacing:0.04em;line-height:1.7;opacity:0.7;}
+@keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px);}40%{transform:translateX(8px);}60%{transform:translateX(-5px);}80%{transform:translateX(5px);}}
+.shake{animation:shake 0.4s ease;}
+
+/* FAIL */
+.fail-title{font-family:'Oswald',sans-serif;font-size:22px;color:var(--red);letter-spacing:0.08em;margin-bottom:1rem;text-align:center;}
+.fail-text{font-size:12px;color:var(--green-dim);line-height:1.9;margin-bottom:1.5rem;text-align:center;}
+.countdown{font-size:30px;color:var(--amber);font-family:'Oswald',sans-serif;text-align:center;margin-bottom:1rem;}
+
+/* GOAT */
+.goat-intro{font-size:12px;color:var(--green-dim);line-height:1.8;margin-bottom:1.5rem;}
+.goat-intro .hi{color:var(--green);font-weight:bold;}
+.progress-bar{height:3px;background:var(--green-dark);margin-bottom:1rem;}
+.progress-fill{height:100%;background:var(--green);transition:width 0.4s ease;}
+.q-label{font-size:10px;letter-spacing:0.13em;color:#005a15;margin-bottom:0.5rem;}
+.q-text{font-size:14px;line-height:1.75;color:var(--green);margin-bottom:1.25rem;font-family:'Oswald',sans-serif;font-weight:400;}
+.answers{display:flex;flex-direction:column;gap:8px;}
+.answer{padding:10px 14px;border:1px solid var(--green-dark);background:var(--surface2);cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--green-dim);transition:all 0.15s;display:flex;gap:10px;align-items:flex-start;line-height:1.5;text-align:left;width:100%;}
+.answer:hover{border-color:var(--green);color:var(--green);background:var(--green-glow);}
+.answer .akey{color:#005a15;flex-shrink:0;font-size:10px;padding-top:1px;}
+.answer.selected{border-color:var(--green);color:var(--green);background:var(--green-glow);}
+
+/* PROCESSING */
+.proc-wrap{text-align:center;padding:1rem 0;}
+.proc-wrap>p{font-size:12px;color:var(--green-dim);margin-bottom:0.5rem;letter-spacing:0.05em;}
+.loading-bar{height:3px;background:var(--green-dark);margin:1.5rem 0;overflow:hidden;}
+.loading-fill{height:100%;background:var(--green);width:0%;animation:load 3.5s ease forwards;}
+@keyframes load{0%{width:0%;}55%{width:68%;}75%{width:79%;}100%{width:100%;}}
+.proc-lines{display:flex;flex-direction:column;gap:5px;margin-top:1rem;}
+.proc-line{font-size:11px;color:#005a15;opacity:0;letter-spacing:0.07em;}
+.proc-line.show{animation:appear 0.3s ease forwards;color:var(--green-dim);}
+
+/* REVEAL */
+.r-top{text-align:center;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--green-dark);}
+.r-clearance{font-size:10px;letter-spacing:0.18em;color:var(--amber);margin-bottom:0.5rem;}
+.r-name{font-family:'Oswald',sans-serif;font-size:30px;color:var(--green);letter-spacing:0.05em;margin-bottom:0.2rem;}
+.r-role{font-size:11px;letter-spacing:0.13em;color:var(--green-dim);margin-bottom:0.75rem;}
+.r-badge{display:inline-block;padding:5px 14px;border:1px solid var(--amber);color:var(--amber);font-size:10px;letter-spacing:0.1em;}
+.r-file{border:1px solid var(--green-dark);padding:1rem;background:var(--surface2);margin-bottom:1rem;}
+.r-lbl{font-size:10px;letter-spacing:0.13em;color:#005a15;margin-bottom:0.5rem;}
+.r-txt{font-size:11px;color:var(--green-dim);line-height:1.85;}
+.r-channel{border:1px solid var(--green);padding:1rem;background:var(--green-glow);margin-bottom:1rem;}
+.r-ch-name{font-family:'Oswald',sans-serif;font-size:17px;color:var(--green);letter-spacing:0.06em;margin-bottom:0.35rem;}
+.r-ch-desc{font-size:11px;color:var(--green-dim);line-height:1.7;}
+.r-msg{border-left:3px solid var(--amber);padding-left:1rem;margin-bottom:1.25rem;}
+.r-msg p{font-size:11px;color:var(--amber);line-height:1.85;font-style:italic;}
+.r-msg .sig{color:#005a15;margin-top:0.4rem;font-style:normal;}
+.invite-btn{display:block;width:100%;padding:14px;border:2px solid var(--green);background:transparent;font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;color:var(--green);cursor:pointer;letter-spacing:0.1em;transition:all 0.2s;text-align:center;text-decoration:none;animation:pulse 2s ease infinite;margin-bottom:1rem;}
+@keyframes pulse{0%,100%{box-shadow:0 0 20px var(--green-glow);}50%{box-shadow:0 0 40px var(--green-glow),0 0 60px var(--green-glow);}}
+.invite-btn:hover{background:var(--green);color:var(--bg);}
+.back-to-dir{display:block;width:100%;padding:10px;border:1px solid var(--green-dark);background:transparent;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--green-dim);cursor:pointer;letter-spacing:0.08em;transition:all 0.15s;text-align:center;margin-top:0.5rem;}
+.back-to-dir:hover{border-color:var(--green);color:var(--green);}
+.footer-note{font-size:10px;color:#005a15;text-align:center;margin-top:1rem;letter-spacing:0.07em;}
+
+@media(max-width:480px){
+  .terminal{padding:1rem;}
+  .cylinder-wrap,.cylinder-bg{width:110px;height:110px;}
+  .cylinder-inner{width:72px;height:72px;}
+  .op-name{font-size:14px;}
+}
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<div class="crt"></div>
+
+<div class="terminal" id="terminal">
+  <div class="t-header">
+    <div class="vault-logo">VAULT-TEC CORPORATION // FLORIDA PANHANDLE INSTALLATION</div>
+    <div class="t-title">VAULT 850</div>
+    <div class="t-sub">SUNSHINE WASTELAND <span class="blink">_</span></div>
+  </div>
+
+  <!-- MAIN BOOT -->
+  <div class="screen active" id="screen-mainboot">
+    <div id="main-boot-lines"></div>
+  </div>
+
+  <!-- DIRECTORY -->
+  <div class="screen" id="screen-directory">
+    <div class="dir-header">
+      <p>> VAULT 850 OPERATIVE DIRECTORY — ALL FILES LOCKED<br>> SELECT AN OPERATIVE TO ATTEMPT ACCESS<br>> UNAUTHORIZED ACCESS IS ENCOURAGED</p>
+      <div class="dir-stats" id="dir-stats">FILES ACCESSED: 0/6</div>
+    </div>
+    <hr class="dir-divider"/>
+    <div class="operative-list" id="operative-list"></div>
+    <div class="dir-footer">
+      VAULT-TEC CORP — VAULT 850 — SUNSHINE WASTELAND<br>
+      ALL OPERATIVES ARE REAL. ALL FILES ARE PERSONAL. ALL LOCKS CAN BE BROKEN.
+    </div>
+  </div>
+
+  <!-- OPERATIVE TERMINAL -->
+  <div class="screen" id="screen-operative">
+    <button class="back-btn" onclick="backToDirectory()">[ &lt; BACK TO DIRECTORY ]</button>
+    <div class="op-terminal-header">
+      <div class="op-label">OPERATIVE FILE — VAULT 850</div>
+      <div class="op-hname" id="op-hname">OPERATIVE</div>
+    </div>
+
+    <!-- OP BOOT -->
+    <div id="op-sub-screen-boot">
+      <div class="op-boot-lines" id="op-boot-lines"></div>
+      <button class="boot-btn" id="op-boot-btn" style="display:none" onclick="startLock()">[ ATTEMPT ACCESS ]</button>
+    </div>
+
+    <!-- OP LOCK -->
+    <div id="op-sub-screen-lock" style="display:none">
+      <div class="lock-status">
+        <div class="pins-label">BOBBY PINS REMAINING</div>
+        <div class="pin-icons">
+          <div class="pin-icon" id="lpin0"></div>
+          <div class="pin-icon" id="lpin1"></div>
+          <div class="pin-icon" id="lpin2"></div>
+        </div>
+        <div class="lock-msg" id="lock-msg">POSITION THE BOBBY PIN. APPLY PRESSURE TO TURN.</div>
+      </div>
+      <div class="lock-area">
+        <div class="cylinder-wrap">
+          <div class="cylinder-bg">
+            <div class="cylinder-inner" id="cylinder">
+              <div class="cylinder-notch"></div>
+            </div>
+            <div class="keyhole-wrap">
+              <div class="keyhole-circle"></div>
+              <div class="keyhole-slot"></div>
+            </div>
+          </div>
+        </div>
+        <div class="pin-area">
+          <div class="lock-hint">SLIDE PIN TO FIND SWEET SPOT<br>HOLD SCREWDRIVER BUTTON TO TURN THE LOCK</div>
+          <div class="pin-track" id="pin-track">
+            <div class="pin-handle" id="pin-handle"></div>
+          </div>
+          <button class="screw-btn" id="screw-btn"
+            onmousedown="startPress(event)" onmouseup="endPress()"
+            ontouchstart="startPress(event)" ontouchend="endPress()">
+            [ HOLD — APPLY SCREWDRIVER ]
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- OP FAIL -->
+    <div id="op-sub-screen-fail" style="display:none">
+      <div class="fail-title" id="fail-title">ALL BOBBY PINS BROKEN</div>
+      <div class="fail-text" id="fail-text">TERMINAL LOCKED.<br>RESETTING IN:</div>
+      <div class="countdown" id="countdown">10</div>
+    </div>
+
+    <!-- GOAT INTRO -->
+    <div id="op-sub-screen-goat-intro" style="display:none">
+      <div class="goat-intro">
+        <p>TERMINAL UNLOCKED. <span class="hi">G.O.A.T. INITIATING.</span></p><br>
+        <p>Access granted. Vault-Tec now requires completion of the <span class="hi">Generalized Occupational Aptitude Test</span> before this operative's full designation can be confirmed.</p><br>
+        <p id="goat-intro-flavor"></p>
+      </div>
+      <button class="boot-btn" onclick="startGoat()">[ BEGIN G.O.A.T. EXAMINATION ]</button>
+    </div>
+
+    <!-- GOAT QUESTIONS -->
+    <div id="op-sub-screen-goat" style="display:none">
+      <div class="progress-bar"><div class="progress-fill" id="q-progress"></div></div>
+      <div class="q-label" id="q-label">QUESTION 1 OF 10</div>
+      <div class="q-text" id="q-text"></div>
+      <div class="answers" id="answers"></div>
+    </div>
+
+    <!-- GOAT PROCESSING -->
+    <div id="op-sub-screen-processing" style="display:none">
+      <div class="proc-wrap">
+        <p>EXAMINATION COMPLETE.</p>
+        <p>ANALYZING RESPONSES...</p>
+        <div class="loading-bar"><div class="loading-fill"></div></div>
+        <div class="proc-lines" id="proc-lines"></div>
+      </div>
+    </div>
+
+    <!-- REVEAL -->
+    <div id="op-sub-screen-reveal" style="display:none">
+      <div class="r-top">
+        <div class="r-clearance" id="r-clearance">ACCESS GRANTED</div>
+        <div class="r-name" id="r-name">OPERATIVE</div>
+        <div class="r-role" id="r-role">DESIGNATION CONFIRMED</div>
+        <div class="r-badge" id="r-badge">ROLE</div>
+      </div>
+      <div class="r-file">
+        <div class="r-lbl">PERSONNEL FILE — CLASSIFICATION: KNOWN</div>
+        <div class="r-txt" id="r-file-text"></div>
+      </div>
+      <div class="r-channel">
+        <div class="r-lbl">VAULT INSTALLATION</div>
+        <div class="r-ch-name" id="r-ch-name"></div>
+        <div class="r-ch-desc" id="r-ch-desc"></div>
+      </div>
+      <div class="r-msg">
+        <div class="r-lbl" style="color:var(--amber)">MESSAGE FROM THE OVERSEER</div>
+        <p id="r-overseer-msg"></p>
+        <p class="sig">— OVERSEER, VAULT 850</p>
+      </div>
+      <a class="invite-btn" href="https://discord.gg/PJDVETG9" target="_blank">[ ENTER VAULT 850 ]</a>
+      <button class="back-to-dir" onclick="backToDirectory()">[ RETURN TO OPERATIVE DIRECTORY ]</button>
+      <div class="footer-note">VAULT-TEC CORPORATION — YOUR FUTURE IS OUR BUSINESS — VAULT 850 // SUNSHINE WASTELAND</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── OPERATIVE DATA ─────────────────────────────────────────────
+const OPERATIVES = [
+  {
+    id: 'skyler',
+    name: 'SKYLER',
+    title: 'OVERSEER // TECHPRIEST OF THE 850 CORRIDOR',
+    badge: 'YGGDRASIL // SKALD // BETA TESTER // TECHPRIEST',
+    clearance: 'OVERSEER CLEARANCE — VAULT 850 COMMAND',
+    role: 'DESIGNATION CONFIRMED — OVERSEER',
+    bootLines: [
+      'LOADING OVERSEER TERMINAL...',
+      'SCANNING CREDENTIALS...',
+      'OPERATIVE PROFILE DETECTED: SKYLER',
+      'STATUS: OVERSEER — VAULT 850 FOUNDER',
+      'FILE TYPE: CLASSIFIED — OMEGA CLEARANCE',
+      'CURRENT LOCATION: UNKNOWN. MOBILE. DO NOT ATTEMPT TO PIN DOWN.',
+      'NOTE: HE ALREADY KNOWS YOU ARE READING THIS.',
+      'NOTE: HE HAS ALREADY PATCHED THE EXPLOIT YOU WERE GOING TO TRY.',
+    ],
+    failText: 'TERMINAL LOCKED. OVERSEER HAS BEEN NOTIFIED.\nHE ALREADY KNEW.\nRESETTING IN:',
+    goatIntro: 'There are no wrong answers. The Overseer already determined the correct ones before this terminal was built.',
+    procLines: [
+      'REVIEWING CLOUD MIGRATION RECORDS...',
+      'VERIFYING CYBER SECURITY CLEARANCE...',
+      'CONFIRMING VAULT 850 FOUNDING RECORD...',
+      'CROSS-REFERENCING RV INSTALLATION — MOBILE. UNTRACEABLE.',
+      'ASSESSING WIT RESPONSE TIME: EXCEPTIONAL.',
+      'NOTING FLORIDA MAN DESIGNATION — CONFIRMED.',
+      'TECHPRIEST CLASSIFICATION: VERIFIED.',
+      'VAULT-TEC ALGORITHM COMPLETE. THE MACHINES ANSWER TO HIM.',
+    ],
+    questions: [
+      { q: "You are migrating a client's entire infrastructure to the cloud. Three things break simultaneously. You:", a: ["Diagnose all three in parallel. Patch in order of impact. Document everything.", "Had already identified these failure points before the migration began.", "Run the diagnostic script you wrote specifically for this scenario last week.", "Fix them. Note that you already knew this would happen. Say nothing."] },
+      { q: "A security vulnerability is discovered in a system you maintain. You:", a: ["It has already been patched. This is a courtesy notification.", "Patch it, document it, and add a monitoring alert for the next three variants.", "Run the audit. Find two more vulnerabilities. Patch all three.", "Note that this is the third vulnerability this quarter. Write a better system."] },
+      { q: "You are living out of an RV with no fixed address. Vault-Tec asks for your location. You write:", a: ["Current coordinates: irrelevant. Next coordinates: also irrelevant.", "850 corridor. Approximate. Update as required.", "Florida. Broadly. Do not follow up on this.", "Where I need to be. That is all the information available."] },
+      { q: "Someone makes a joke. You respond:", a: ["Faster than they finished the setup.", "With something better than what they had planned.", "With a callback to something they said four minutes ago that they forgot.", "Without thinking. The joke was already loaded."] },
+      { q: "You are beta testing a new game. You find three bugs in the first hour. You:", a: ["Document all three with reproduction steps, system specs, and severity ratings.", "Find two more and submit the complete report before the session ends.", "Note which one is most likely to corrupt save files and flag it priority one.", "Submit the report. Keep playing. Find the rest tomorrow."] },
+      { q: "A client asks you to explain cloud architecture in simple terms. You:", a: ["Explain it simply. Then explain why the simple version is slightly wrong. Then explain the correct version.", "Ask what they already know. Start from there. Get them to the right answer.", "Use an analogy. Make sure the analogy is accurate. Most analogies are not.", "Give them the answer they need. Not the one they asked for."] },
+      { q: "You are fishing. Nothing is biting. You:", a: ["Change location. Apply data to the problem. This is the same as any other diagnostic.", "Wait. You have patience and coffee. The fish will make a mistake eventually.", "Note the conditions. Adjust the approach. Try again. Repeat until correct.", "Enjoy it anyway. This is the point. The fish is optional."] },
+      { q: "Vault-Tec asks who built Vault 850. You:", a: ["Me and Alex. In that order. The rest is details.", "The Overseer and his Architect. The records reflect this.", "We did. The vault reflects both of us. Some parts more than others.", "I built the infrastructure. Alex built the foundation. The crew built the rest."] },
+      { q: "Someone asks if you have a joke for this situation. You:", a: ["Already told it. You missed it.", "Yes. It was better thirty seconds ago but it still works.", "Several. Ranked by appropriateness. Delivering the second-best one.", "Always."] },
+      { q: "The G.O.A.T. examiner asks what Vault 850 means to you. You say:", a: ["I built it for them. That is the whole answer.", "A place that did not exist until I made it. Now it does. Now it is theirs.", "Home base. For people who needed one. Including me.", "Ask me again in a year. The answer will be better then."] }
+    ],
+    file: "Designation: Overseer. Classification: Techpriest of the 850 Corridor. Origin: Florida. Current location: unknown, mobile, do not attempt to pin down. Lives out of an RV because Vault-Tec couldn't build walls fast enough to contain him. Cyber security, cloud architecture, code — the machines answer to him and he answers to nobody. Quick enough to have the punchline before you finish the setup. The vault runs because he built it, maintains it, and has already patched the three vulnerabilities you haven't found yet. Florida Man. Emperor's Man. Same thing.",
+    channel: '☢️ OVERSEER\'S TERMINAL',
+    channelDesc: 'This is his domain. The vault\'s command center. Every channel you see, every operative file you can access, every detail of this place — he built it. For you. Without saying so. That is how he works.',
+    overseer: "You are reading my file. I anticipated this. I built the terminal that let you do it. Welcome to Vault 850 — everything here exists because I made it exist, and I made it for all of you. Don't make me regret it. I won't. But don't make me regret it."
+  },
+  {
+    id: 'alex',
+    name: 'ALEX',
+    title: 'HUSCARL // VAULT ARCHITECT',
+    badge: 'HUSCARL // OVERSEER // IMMOVABLE // DOVAHKIIN',
+    clearance: 'LEGAL DIVISION CLEARANCE — VAULT 850',
+    role: 'DESIGNATION CONFIRMED — VAULT ARCHITECT',
+    bootLines: [
+      'LOADING OPERATIVE TERMINAL...',
+      'SCANNING CREDENTIALS...',
+      'OPERATIVE PROFILE DETECTED: ALEX',
+      'STATUS: VAULT ARCHITECT — CO-FOUNDER',
+      'FIREARMS INCIDENT: ON FILE. LAMINATED.',
+      'COMPANION: BETA — MALINOIS — RETIRED MILITARY — EXEMPLARY',
+      'ALLIED OPERATIVE TRIN: GEORGIA INSTALLATION — PENDING',
+      'WARNING: OPERATIVE WILL CORRECT THIS BOOT SEQUENCE IF INACCURATE.',
+    ],
+    failText: 'TERMINAL LOCKED.\nOPERATIVE ALEX HAS BEEN NOTIFIED.\nHE ALREADY KNEW THE CORRECT PIN POSITION.\nRESETTING IN:',
+    goatIntro: 'The Drunken Portal was built crooked and it was perfect. This examination is the same. Proceed.',
+    procLines: [
+      'REVIEWING GATE SECURITY SERVICE RECORD...',
+      'CROSS-REFERENCING LEGAL DIVISION CROSS-TRAINING...',
+      'LOCATING FIREARMS INCIDENT REPORT — FOUND. LAMINATED.',
+      'ASSESSING BETA — MALINOIS — RETIRED MILITARY: EXEMPLARY.',
+      'REVIEWING FORZA LAP TIMES — IMPRESSIVE.',
+      'NOTING ALLIED OPERATIVE TRIN — GEORGIA INSTALLATION...',
+      'DRUNKEN PORTAL FOUNDING RECORD CONFIRMED.',
+      'ASSIGNMENT DETERMINED. THE FOUNDATION HOLDS.',
+    ],
+    questions: [
+      { q: "You are assigned to gate security. A vehicle approaches without proper credentials. You:", a: ["Deny entry. Protocol exists for a reason and the reason is correct.", "Request documentation. Wait. They do not have it. You knew this.", "Detain, notify, document. In that order. With precision.", "Handle it the right way. There is only one right way."] },
+      { q: "A vault resident is building something incorrectly. The foundation is misaligned. You:", a: ["Tell them. Six degrees compounds. This will be a problem.", "Offer to take over. Politely. For approximately three seconds.", "Document the error and provide a corrected blueprint.", "Watch until they notice. They will not notice. You intervene."] },
+      { q: "Beta needs to be assessed by Vault-Tec as a potential security asset. You respond:", a: ["Beta is retired. He has earned it. He will not be reassigned.", "Agree, but outline Beta's terms. They are non-negotiable.", "Note that Beta's service record exceeds most operatives here.", "Beta answers to me. These are related facts."] },
+      { q: "Someone presents an incorrect argument with confidence. You:", a: ["Correct them. Politely. Once. Then again less politely.", "Document your correction before the meeting ends.", "Note that confidence does not improve an incorrect argument.", "Wait for them to finish. Correct every point. With citations."] },
+      { q: "Trin disagrees with your approach. You:", a: ["Listen. Consider. Maintain your position. She is wrong but you love her.", "Acknowledge her view and explain why yours is correct. Again.", "Note this for the record. Proceed with your approach.", "Agree to disagree. Implement your approach immediately."] },
+      { q: "You are building a portal house in Valheim with Skyler. He suggests a different structure. You:", a: ["It will be crooked. You both know it. It will also be perfect.", "Proceed with your approach. The result speaks for itself.", "Compromise on aesthetics. Never on foundations.", "Build it together. It will be over-engineered. It will be right."] },
+      { q: "Vault-Tec's firearms registry returns your form with a notation. You:", a: ["Review it. It is always about the incident. It is always the incident.", "Note the incident is laminated. It needs no further discussion.", "Submit a correction. The notation is inaccurate.", "File it again. Let it remain documented."] },
+      { q: "You sit down at a racing simulator for the first time. Your lap time is:", a: ["Competitive. You have significant hours on similar simulations.", "Faster than expected by everyone except you.", "Within acceptable parameters for a first attempt. You will improve.", "Not discussed. Your second lap is the relevant data point."] },
+      { q: "Someone challenges your Skyrim lore knowledge. You:", a: ["They are wrong. You have completed this questline multiple times.", "Recall the exact sequence without consulting any reference material.", "Ask them to walk through it. Correct each step.", "Note the discrepancy. You will still be correct when they finish."] },
+      { q: "The G.O.A.T. examiner asks how you knew your assignment before taking the test. You say:", a: ["The Drunken Portal has my name on it. It always has.", "I built the foundation. The assignment follows logically.", "I reviewed the algorithm. Found the error. The error favored me. I left it.", "I knew before the first question. This was a formality. A necessary one."] }
+    ],
+    file: "San Antonio. Air Force. Former gate security, current Vault-Tec legal cross-trainee, and the only man in the 850 corridor to have his own firearms confiscated by his own people. The incident report exists. It is laminated. It lives in the Teak Boys' collective memory rent free. Particular about builds, particular about roles, particular about how things are done and why everyone else is doing it wrong. Drives fast cars in the simulation, builds impenetrable fortresses in the field, and has never once let a bad argument beat a correct one. Allied operative Trin — Georgia installation — has been cleared for future vault residency. Her chair is already at the table. His reaction to that news is not logged but was heard across three installations.",
+    channel: '🍺 THE DRUNKEN PORTAL',
+    channelDesc: 'You built the foundation. The portal was crooked, it was over-engineered, and it was perfect. This is your corner of Vault 850 — the lounge, the hearth. It exists because you and Skyler built it together. The rest of them just live here.',
+    overseer: "You co-founded the name that holds this vault together. The Drunken Portal was yours before it was ours. None of this exists without you building it first. Trin's chair is at the table. It was always going to be there. Welcome home, Architect."
+  },
+  {
+    id: 'britt',
+    name: 'BRITT',
+    title: 'ALLFATHER // NOMADIC ASSET',
+    badge: 'ALLFATHER // DEATH GUARD // GREY KNIGHT // INQUISITOR',
+    clearance: 'INQUISITORIAL CLEARANCE — EYES ONLY',
+    role: 'DESIGNATION CONFIRMED — NOMADIC ASSET',
+    bootLines: [
+      'LOADING OPERATIVE TERMINAL...',
+      'SCANNING CREDENTIALS...',
+      'OPERATIVE PROFILE DETECTED: BRITT',
+      'TRANSFER ORDERS: INTERCEPTED. AGAIN.',
+      'CURRENT LOCATION: VIRGINIA. PREVIOUSLY: TEXAS. NEXT: UNKNOWN.',
+      'DEATH GUARD LINEAGE: CONFIRMED.',
+      'GREY KNIGHT CLEARANCE: CONFIRMED.',
+      'CONTRADICTION FLAGGED: #18. NOBODY WILL FOLLOW UP.',
+    ],
+    failText: 'TERMINAL LOCKED.\nINQUISITORIAL PROTOCOL ENGAGED.\nTHE CONTRADICTION HAS BEEN FLAGGED AGAIN.\nRESETTING IN:',
+    goatIntro: 'Your transfer orders have been intercepted and rerouted to this examination. The result was predetermined. The Inquisition already knows.',
+    procLines: [
+      'VERIFYING NOMADIC ASSET CLASSIFICATION...',
+      'REVIEWING INTERCEPTED TRANSFER ORDERS...',
+      'CROSS-REFERENCING DEATH GUARD LINEAGE... CONFIRMED.',
+      'CROSS-REFERENCING GREY KNIGHT CLEARANCE... CONFIRMED.',
+      'FLAGGING CONTRADICTION — FLAG #18...',
+      'REVIEWING FLAG #18... DISMISSED. NOBODY WILL FOLLOW UP.',
+      'INQUISITORIAL MANDATE VERIFIED. CLEARANCE: ABSOLUTE.',
+      'ASSIGNMENT DETERMINED. CADIA STANDS.',
+    ],
+    questions: [
+      { q: "You receive new deployment orders. This is your fourth reassignment this year. You:", a: ["Accept. Home is wherever the mission requires.", "Note that Texas still exists. Virginia is temporary.", "File a counter-request. Decline to wait for the response.", "Pack immediately. You were never fully unpacked."] },
+      { q: "Someone claims the Black Templars have a home world. You:", a: ["Correct them immediately. They are fleet-based. This is not a debate.", "Provide the full chapter history, crusade structure, and High Marshal lineage unprompted.", "Ask them to cite their source. Wait. They cannot. You knew this.", "Explain that the Black Templars have never needed one. Like you."] },
+      { q: "Your personnel file contains a contradiction flagged seventeen times. You:", a: ["Acknowledge it. Take no corrective action.", "Request that flag number eighteen be pre-filled.", "Explain the contradiction is a feature, not an error.", "Do not acknowledge it. Let Vault-Tec figure it out."] },
+      { q: "A junior operative violates protocol in your presence. You:", a: ["Address it immediately, directly, without ambiguity.", "Document the violation with precision.", "Remind them the Inquisition has fewer forms but more consequences.", "Handle it. Move on. There is no second occurrence."] },
+      { q: "Someone says Cadia's destruction means Cadia fell. You:", a: ["Correct them. Cadia was destroyed. Cadia did not fall. These are different.", "Reference the exact battle, the pylons, Creed's last order.", "Explain that Cadians stand even when the world beneath them does not.", "Walk away. They are not ready for this conversation."] },
+      { q: "Vault-Tec asks for your home address. You write:", a: ["Nomadic asset. Do not attempt to pin down.", "Current installation pending. Texas by birth. Virginia by assignment.", "Wherever the orders say. Update as required.", "Texas by birth. Virginia by assignment. Vault 850 by interception."] },
+      { q: "The World Eaters are described as 'chaotic and unstable' in a vault briefing. You:", a: ["Accurate. Also the most effective close-combat force in the galaxy.", "Correct in assessment, incomplete in respect. Angron's legion deserves more.", "Note that Khorne cares not from where the blood flows.", "File an amendment. This will not be the last one."] },
+      { q: "You have 48 hours of leave. You spend it:", a: ["Exactly where you planned. Alone. Efficiently.", "Returning to Texas. Briefly. Already thinking about the return.", "Catching up on 40K lore developments. There is always more.", "Preparing for the next deployment. Leave is a planning window."] },
+      { q: "A supervisor questions your authority to act independently. You:", a: ["Present your clearance level. The conversation ends there.", "Explain that your mandate supersedes the question.", "Remind them the Inquisition does not require permission.", "Handle the matter. Brief them afterward. Or not."] },
+      { q: "The G.O.A.T. examiner says your file is unlike any they have processed. You say:", a: ["The file speaks for itself.", "The contradiction in my designations is intentional. Do not flag it again.", "Cadia stands. That is all.", "I was already assigned before I took this test. We both know it."] }
+    ],
+    file: "Texas-born, Virginia-stationed, perpetually mid-deployment. Vault-Tec intercepted his transfer orders and rerouted him to Vault 850 without explanation or apology. A veteran of more campaigns than the personnel system can process. Classified: Nomadic Asset, Death Guard lineage, Grey Knight clearance. The contradiction in those last two designations has been flagged seventeen times. Nobody has followed up. Nobody will.",
+    channel: '⚔️ THE CRUSADE VOX',
+    channelDesc: 'This wing was built for you. Black Templars. Cadians who never broke. World Eaters who never stopped. Fleet-based, always moving, always fighting — exactly like you. The last wall holds. Your corner of the vault holds.',
+    overseer: "The contradiction in your file has now been flagged eighteen times. I flagged it myself. I am also not following up. You are the vault's Allfather — older, wiser, and the only operative whose clearance level the form does not go high enough to list. Cadia stands. So do you. Welcome home."
+  },
+  {
+    id: 'colin',
+    name: 'COLIN',
+    title: 'COMBAT MEDIC // BUSCH LIGHT BERSERKER',
+    badge: 'HUSCARL // BUSCH LIGHT BERSERKER // COMBAT MEDIC // DOPAMINE GOBLIN',
+    clearance: 'MEDICAL WING CLEARANCE — VAULT 850',
+    role: 'DESIGNATION CONFIRMED — COMBAT MEDIC',
+    bootLines: [
+      'LOADING OPERATIVE TERMINAL...',
+      'SCANNING CREDENTIALS...',
+      'OPERATIVE PROFILE DETECTED: COLIN',
+      'STATUS: COMBAT MEDIC // HOMEOWNER // CHAOS AGENT',
+      'GOLF SIMULATOR: INSTALLED AND OPERATIONAL',
+      'BUSCH LIGHT RESERVES: STOCKED',
+      'DIXIE THREAT ASSESSMENT: FAILED TO CLASSIFY (4 ATTEMPTS)',
+      'DIXIE THREAT LEVEL: ELEVATED. SHE IS AWARE OF YOUR LOCATION.',
+    ],
+    failText: 'ALL PINS BROKEN.\nTERMINAL LOCKED.\nDIXIE HAS BEEN NOTIFIED.\nSHE IS ALREADY ON HER WAY.\nRESETTING IN:',
+    goatIntro: 'The golf simulator is warmed up. The Busch Lights are cold. Vault-Tec requires this examination before you can access your installation. Dixie does not require anything. She is already inside.',
+    procLines: [
+      'CROSS-REFERENCING APTITUDE MATRIX...',
+      'EVALUATING COMBAT FIELD EXPERIENCE...',
+      'REVIEWING MEDICAL CLEARANCE RECORDS...',
+      'ASSESSING TOLERANCE FOR BUSCH LIGHT: EXCEPTIONAL.',
+      'CONSULTING DIXIE THREAT ASSESSMENT FILE — INCONCLUSIVE.',
+      'NOTING GOLF SIMULATOR PROFICIENCY...',
+      'VAULT-TEC ALGORITHM COMPLETE.',
+      'ASSIGNMENT DETERMINED. DIXIE REMAINS UNCLASSIFIED.',
+    ],
+    questions: [
+      { q: "You are stationed at a remote Air Force base. A pilot comes to you with a minor laceration. You treat the wound. What next?", a: ["File the incident report immediately.", "Open a Busch Light and assess further.", "Ask if he wants to hit the simulator while the bandage sets.", "Check on Dixie. She was near the flight line again."] },
+      { q: "A vault resident asks you to recommend a drink for a special occasion. You suggest:", a: ["Whatever is in the nearest cooler, provided it is Busch Light.", "A single malt selected with the care you apply to a field dressing.", "Busch Light AND a single malt. One does not cancel the other.", "Whatever is fastest. There is golf to be played."] },
+      { q: "Vault-Tec classifies your dog as a Level 4 Biohazard. Your response:", a: ["Dispute it. She is a good girl. To you.", "Accept it but take no corrective action.", "File a counter-report noting Dixie has never once bitten you personally.", "Ask Vault-Tec which operative filed the fourth incident report."] },
+      { q: "You have one hour of free time. You spend it:", a: ["In the garage. The simulator doesn't play itself.", "Locating the nearest Busch Light and assessing the situation.", "Finding a new game that looks fun and will be abandoned in 72 hours.", "Checking on the pilots. They cannot be trusted unsupervised."] },
+      { q: "A vault resident is injured. You are mid-round on the simulator. You:", a: ["Pause the simulator. Medical duty comes first. Reluctantly.", "Treat them without pausing. You have 14 holes left.", "Treat them while explaining your current handicap.", "Finish the hole. They will still be injured in four minutes."] },
+      { q: "Vault-Tec asks you to justify your Busch Light order of 48 units. You write:", a: ["Medical necessity. Morale is a clinical consideration.", "Essential supplies. See attached documentation.", "This number is conservative. Please advise on reorder thresholds.", "Operational. Do not follow up on this."] },
+      { q: "A new game has appeared on Game Pass. You:", a: ["Download it immediately. Play for 11 hours straight.", "Research it for four minutes. Then download it.", "Recommend it to everyone before finishing the tutorial.", "Begin playing. Lose interest by hour three. No regrets."] },
+      { q: "Vault-Tec asks your primary qualification for vault residency. You write:", a: ["Air Force IDMT. I keep people alive. That seems relevant.", "Golf simulator, whisky collection, and a dog with an incident file.", "I am the only operative with a permanent installation. You are all guests.", "Busch Light tolerance: exceptional. Medical clearance: active."] },
+      { q: "During a vault emergency, your role is to:", a: ["Provide immediate medical assistance to all affected operatives.", "Provide assistance while maintaining access to emergency Busch Light.", "Ensure Dixie is secured before treating anyone. She is the real threat.", "Assess, treat the wounded, and resume the back nine when stable."] },
+      { q: "The G.O.A.T. examiner asks for final comments before your assignment. You say:", a: ["No. I already know what it says.", "Can Dixie get a designation too? She has earned it.", "Is there a Busch Light at the assignment ceremony.", "Where is the 19th Hole and when can I move in."] }
+    ],
+    file: "The vault's only homeowner, which makes him simultaneously the most stable and most chaotic member of the 850 cohort. His permanent installation houses three things of note: a golf simulator, a whisky collection curated with the same precision he applies to keeping Air Force pilots alive, and Dixie — a creature Vault-Tec has attempted to classify four times and failed. She has attacked every operative in the Teak Boys roster. She has never once acknowledged wrongdoing. Neither has Colin. Active Air Force IDMT, embedded with pilot bros, cool by association and by merit. Drinks Busch Light without irony alongside single malts without shame. The vault's medic, its most permanent resident, and the only man whose dog has more incident reports than he does. We love Dixie. Dixie does not love us.",
+    channel: '⛳ THE 19TH HOLE',
+    channelDesc: 'Your corner of Vault 850 has been prepared. The golf simulator is installed. The Busch Lights are cold. The bite report is ready for its first entry. Dixie\'s clearance has been denied. She is coming anyway.',
+    overseer: "You built nothing in this vault and yet somehow have the best room in it. That tracks. Welcome home, Operative. The mead is cold. The simulator is warmed up. Try not to break everything before the others arrive. We love Dixie. Dixie does not love us. Nothing has changed."
+  },
+  {
+    id: 'teal',
+    name: 'TEAL',
+    title: 'XBOX EXILE // UNCLASSIFIED ASSET',
+    badge: 'HUSCARL // XBOX EXILE // TILTED // RECLAIMER',
+    clearance: 'SURFACE OPERATIONS — UNCLASSIFIED — ESSENTIAL',
+    role: 'DESIGNATION CONFIRMED — XBOX EXILE',
+    bootLines: [
+      'LOADING OPERATIVE TERMINAL...',
+      'SCANNING CREDENTIALS...',
+      'OPERATIVE PROFILE DETECTED: TEAL',
+      'PLATFORM: XBOX. THIS HAS BEEN NOTED.',
+      'GOVERNMENT CONTRACTOR STATUS: CLASSIFIED. DO NOT GOOGLE.',
+      'COMPETITIVE FPS RECORD: ON FILE. WE ARE SORRY.',
+      'MEAD HALL VOLUME — POST DRINK THREE: SIGNIFICANT.',
+      'NOTE: VAULT DOES NOT SUPPORT XBOX CONTROLLERS. WE KNOW. WE ARE SORRY.',
+    ],
+    failText: 'ALL PINS BROKEN.\nTERMINAL LOCKED.\nPLEASE DO NOT RAGE QUIT.\nRESETTING IN:',
+    goatIntro: 'You are Essential. You are Unclassified. You are already one of us. This examination is a formality. Try not to rage quit before the final question.',
+    procLines: [
+      'VERIFYING SURFACE OPERATIVE CREDENTIALS...',
+      'REVIEWING GOVERNMENT CONTRACTOR FILE — REDACTED.',
+      'CROSS-REFERENCING XBOX INSTALLATION — CONFIRMED. NOTED.',
+      'REVIEWING COMPETITIVE FPS RECORD — WE ARE SORRY.',
+      'ASSESSING MEAD HALL VOLUME LEVELS — POST-DRINK THREE...',
+      'NOTING FLORIDA INSTALLATION — ADJACENT. CLOSE ENOUGH.',
+      'VAULT-TEC ALGORITHM COMPLETE.',
+      'ASSIGNMENT DETERMINED. THE VAULT CLAIMS ITS EXILE.',
+    ],
+    questions: [
+      { q: "A colleague asks what exactly you do for the government. You:", a: ["Provide a vague but technically accurate description that answers nothing.", "Smile. Say very little. Let them wonder.", "Note the details are not relevant to their clearance level.", "Change the subject. Efficiently."] },
+      { q: "You are in a competitive FPS ranked match. Your team is losing. You:", a: ["Stay in. You have never quit a ranked match. You are not starting now.", "Communicate your frustration through accepted vocal channels.", "Remain silent until something truly unacceptable happens. Then do not.", "Queue again immediately after. You will win eventually."] },
+      { q: "A vault resident suggests you switch to PC gaming. You:", a: ["Decline. The Xbox is not a phase. The Xbox is a lifestyle.", "Note that Game Pass has everything you need and costs less.", "Acknowledge their perspective and return to your controller.", "Ask if they have considered minding their own business."] },
+      { q: "It is drink three of the evening. You:", a: ["Become significantly more vocal than drinks one and two suggested.", "Have opinions. Strong ones. About everything. Starting now.", "Volume increases. This is not a choice. This is chemistry.", "Contribute meaningfully to every conversation currently happening."] },
+      { q: "A new game appears on Game Pass. You have four hours this week. You:", a: ["Download it. Four hours is enough to form a strong opinion.", "Check if it supports cross-play. Note that it probably does not.", "Begin immediately. Finish it or not. Both are valid.", "Download it. Also two others. Decide later."] },
+      { q: "Vault-Tec notes your installation is not technically in the 850 area code. You:", a: ["Adjacent counts. This position is non-negotiable.", "Florida is Florida. The details are immaterial.", "You have spent enough time in the 850 corridor to qualify by proximity.", "Decline to comment on the geography. You are here. That is sufficient."] },
+      { q: "A ranked match ends badly. Not entirely your fault. You:", a: ["Queue again. Immediately. Without discussion.", "Process the loss. Briefly. Queue again.", "Identify exactly whose fault it was. Say nothing. Queue again.", "Two minute break. Queue again."] },
+      { q: "Your surface duties are described as mysterious. You:", a: ["Confirm this is accurate. Provide no further information.", "Note that mysterious is one word for it.", "Smile. Let them wonder. They will not stop wondering.", "Ask which part specifically. For research purposes."] },
+      { q: "The vault is loud. You have been quiet for two drinks. Drink three arrives. You:", a: ["The quiet period has ended. Everyone is now aware.", "Contribute a take so strong it reorients the entire conversation.", "Volume. Presence. The vault now knows you are here.", "Everything from drinks one and two is now being said simultaneously."] },
+      { q: "The G.O.A.T. examiner asks if Essential or Unclassified is more accurate. You say:", a: ["Both. At the same time. That is the point.", "Essential. Unclassified is a technicality.", "Do not open the file marked Teal. That includes you.", "I was here before the paperwork. I will be here after it."] }
+    ],
+    file: "Florida man, government contractor, surface operative. His exact duties are not disclosed, not discussed, and not Googled by anyone who values their afternoon. What Vault-Tec's files do confirm: cross-platform transfer, Xbox installation, the only operative in Vault 850 separated from the cohort by an HDMI cable and a different ecosystem. Plays competitive FPS with professional intensity and personal anguish. Silent in the field, unbearable in the mead hall after drink three. Has never once backed down from a ranked match despite what ranked matches have done to him. Essential. Unclassified. The vault's wildcard, its mystery, and the reason Vault-Tec's legal division keeps a separate file marked simply: Teal. Do not open.",
+    channel: '🍺 VAULT 850 — ALL OF IT',
+    channelDesc: 'You do not have one corner. You have the whole vault. The beloved outsider has always had a home here — it just took Vault-Tec this long to make it official. The Drunken Portal is open. The mead is cold. Drink three is entirely your business.',
+    overseer: "You are the vault's wildcard and its most essential mystery. Nobody opens your file. Nobody stops trying. You were loved before the paperwork confirmed it and you will be loved after it is lost. Welcome home, Exile. The Xbox dock is on the left. We put it there for you."
+  },
+  {
+    id: 'cj',
+    name: 'CJ',
+    title: 'SEAJIZZLE // MAINTENANCE ENGINEER',
+    badge: 'HUSCARL // MAINTENANCE ENG // VAULT-BORN // FAMILY FIRST',
+    clearance: 'MAINTENANCE DIVISION — FAMILY FIRST CLEARANCE',
+    role: 'DESIGNATION CONFIRMED — SEAJIZZLE',
+    bootLines: [
+      'LOADING OPERATIVE TERMINAL...',
+      'SCANNING CREDENTIALS...',
+      'OPERATIVE PROFILE DETECTED: CJ — DESIGNATION: SEAJIZZLE',
+      'STATUS: MAINTENANCE ENGINEER // FLORIDA INSTALLATION',
+      'FAMILY RECORD: TWO DAUGHTERS — PRIORITY ONE',
+      'BACHELOR PARTY RECORD: GOLF. HARD LIQUOR. PERFECT.',
+      'OFFSHORE FISHING PROFICIENCY: EXCEPTIONAL',
+      'NOTE: THE VAULT RUNS BECAUSE HE RUNS IT.',
+    ],
+    failText: 'ALL PINS BROKEN.\nTERMINAL LOCKED.\nVAULT-TEC MAINTENANCE HAS BEEN NOTIFIED.\nHE WILL FIX IT WITHOUT BEING ASKED.\nRESETTING IN:',
+    goatIntro: 'You did not apply for Vault 850. You did not need to. This examination is a formality for someone whose character arrived before the paperwork. The vault already knows who you are.',
+    procLines: [
+      'REVIEWING MAINTENANCE ENGINEERING CREDENTIALS...',
+      'CONFIRMING FLORIDA INSTALLATION — ACTIVE...',
+      'REVIEWING BACHELOR PARTY RECORD — GOLF. HARD LIQUOR. PERFECT.',
+      'ASSESSING OFFSHORE FISHING PROFICIENCY: EXCEPTIONAL.',
+      'REVIEWING FAMILY RECORD — TWO DAUGHTERS. PRIORITY ONE.',
+      'CONFIRMING VAULT BLOODLINE — MARRIED IN. BELONGS HERE.',
+      'VAULT-TEC ALGORITHM COMPLETE.',
+      'ASSIGNMENT DETERMINED. THE VAULT IS BETTER FOR HAVING HIM.',
+    ],
+    questions: [
+      { q: "A critical vault system has failed. Three operatives have attempted repairs. None succeeded. You arrive. You:", a: ["Assess. Identify the actual problem. Fix it without commentary.", "Note the previous attempts were incorrect in ways that take longer to fix.", "Ask what they tried. Fix what they missed. Move on.", "Fix it. Do not explain how. The result speaks for itself."] },
+      { q: "You are offshore before sunrise. The water is flat. Your daughters are home. This moment is:", a: ["Exactly what it is supposed to be. Nothing needs adding.", "The reason the rest of the week makes sense.", "Perfect. Quietly. Without needing confirmation.", "Yours. Completely. And that is enough."] },
+      { q: "Your bachelor party involves golf and significant alcohol. Skyler and Alex are there. You:", a: ["This is correct. This is exactly correct.", "Approve. The golf course was the right call.", "Agree immediately. Some days need no deliberation.", "Say yes. Some memories are made before you know they are memories."] },
+      { q: "A vault resident asks you to describe yourself in one sentence. You:", a: ["Decline. Two daughters. That covers it.", "Florida. Maintenance. Father. The rest is details.", "Say something quiet and accurate that stays with them longer.", "Shrug. The people who need to know already do."] },
+      { q: "Game Pass has added three new titles. You have limited time. You:", a: ["Download what looks interesting. Play when available. No pressure.", "Check what the crew is playing. Start there.", "Pick one. Finish it or not. Either way, no complaints.", "Note the options. Return when the week allows. Games wait."] },
+      { q: "Something in the vault needs fixing. Nobody has noticed yet. You:", a: ["Notice it. Fix it. Say nothing about it.", "Handle it before it becomes someone else's problem.", "Add it to the list. Work through the list. That is how it works.", "Fix it. The vault runs because someone always does."] },
+      { q: "Your boat's engine fails offshore. You:", a: ["Diagnose it. Fix it. Continue the trip.", "Assess calmly. The engine is the problem. Solve the engine.", "Handle it the same way you handle everything. Quietly and correctly.", "Fix it. Note what caused it. It will not happen again."] },
+      { q: "Your daughters ask you a hard question. You:", a: ["Answer honestly. They deserve that. Always.", "Take the time to answer it right. Right beats fast.", "Tell them the truth. Then tell them why.", "Answer it. Remember it. It will matter later."] },
+      { q: "Vault-Tec notes you entered through marriage rather than original residency. You:", a: ["The result is the same. You are here. You belong here.", "Married in. Stayed by choice. The distinction is irrelevant.", "The bloodline recognized you. The paperwork caught up.", "The best day of your life was on a golf course with your people."] },
+      { q: "The G.O.A.T. examiner asks what Vault 850 means to you. You say:", a: ["The crew. That is the whole answer.", "A place built with people like me in mind.", "Home. In the way that needs no explanation.", "The water will still be there. But this is worth coming back to."] }
+    ],
+    file: "Operative CJ — designation: SeaJizzle. Florida maintenance engineer and father of two — the most quietly formidable person in Vault 850 and the last one who would ever say so. Came into the Teak Boys through Operative Skyler's bloodline, through a wedding, through a bachelor party that lives in the crew's memory not for what happened but for who was there — him, at his best, with his people around him. Skyler and Alex were on that golf course, the drinks were cold, and the day was perfect. Xbox operative, Game Pass division, never a complaint filed. The green is a known and respected variable. The maintenance wing runs because he runs it and the vault is better for having him.",
+    channel: '🔧 MAINTENANCE WING — VAULT 850',
+    channelDesc: 'The vault runs because you run it. Your wing has been prepared. You did not ask for it. You did not need to ask. Some things in Vault 850 exist because they were built — yours exists because it was always meant to.',
+    overseer: "You are the most quietly formidable person in this vault and the last one who would ever say so. The maintenance wing runs because you run it. The crew is better because you married into it. The best day of your life put you in this vault forever. The water will still be there. Welcome home, Operative."
+  }
+];
+
+// ── STATE ──────────────────────────────────────────────────────
+let currentOp = null;
+let pinsLeft = 3;
+let pinPos = 0;
+let sweetSpot = 50;
+let pressing = false;
+let turnAmount = 0;
+let locked = true;
+let dragging = false;
+let gameActive = true;
+let qIndex = 0;
+
+function getAccessed() {
+  try { return JSON.parse(localStorage.getItem('v850_accessed') || '[]'); }
+  catch(e) { return []; }
+}
+function markAccessed(id) {
+  const a = getAccessed();
+  if (!a.includes(id)) { a.push(id); localStorage.setItem('v850_accessed', JSON.stringify(a)); }
+}
+
+// ── MAIN BOOT ──────────────────────────────────────────────────
+const mainBootLines = [
+  { text: 'VAULT-TEC CORP v4.2.1 — INITIALIZING...', cls: '' },
+  { text: 'LOADING VAULT 850 DIRECTORY...', cls: '' },
+  { text: 'SUNSHINE WASTELAND INSTALLATION — FLORIDA PANHANDLE', cls: '' },
+  { text: 'SCANNING OPERATIVE DATABASE...', cls: '' },
+  { text: '6 OPERATIVE FILES DETECTED', cls: '' },
+  { text: 'ALL FILES: LOCKED', cls: '' },
+  { text: 'LOCKPICK REQUIRED FOR ACCESS', cls: '' },
+  { text: 'G.O.A.T. EXAMINATION REQUIRED AFTER EACH LOCK', cls: '' },
+  { text: '...', cls: '' },
+  { text: 'UNAUTHORIZED ACCESS IS ENCOURAGED', cls: 'warn' },
+  { text: 'VAULT 850 // SUNSHINE WASTELAND // TEAK BOYS', cls: 'title' },
+];
+
+window.onload = function() {
+  mainBootLines.forEach((line, i) => {
+    setTimeout(() => {
+      const d = document.createElement('div');
+      d.className = 'boot-line ' + line.cls;
+      d.textContent = '> ' + line.text;
+      document.getElementById('main-boot-lines').appendChild(d);
+      setTimeout(() => d.classList.add('show'), 50);
+      if (i === mainBootLines.length - 1) {
+        setTimeout(() => { showScreen('directory'); renderDirectory(); }, 600);
+      }
+    }, i * 180);
+  });
+};
+
+// ── DIRECTORY ──────────────────────────────────────────────────
+function renderDirectory() {
+  const accessed = getAccessed();
+  const list = document.getElementById('operative-list');
+  list.innerHTML = '';
+  document.getElementById('dir-stats').textContent = `FILES ACCESSED: ${accessed.length}/6`;
+
+  OPERATIVES.forEach(op => {
+    const isAccessed = accessed.includes(op.id);
+    const div = document.createElement('div');
+    div.className = 'op-entry' + (isAccessed ? ' accessed' : '');
+    div.onclick = () => openOperative(op.id);
+    div.innerHTML = `
+      <div class="op-left">
+        <span class="op-arrow">&gt;</span>
+        <div>
+          <div class="op-name">${op.name}</div>
+          <div class="op-title">${op.title}</div>
+        </div>
+      </div>
+      <div class="op-status ${isAccessed ? 'accessed' : 'locked'}">[${isAccessed ? 'ACCESSED' : 'LOCKED'}]</div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+// ── OPEN OPERATIVE ─────────────────────────────────────────────
+function openOperative(id) {
+  currentOp = OPERATIVES.find(o => o.id === id);
+  pinsLeft = 3; pinPos = 0; turnAmount = 0; locked = true; gameActive = true; qIndex = 0;
+
+  document.getElementById('op-hname').textContent = 'OPERATIVE: ' + currentOp.name;
+  document.getElementById('op-boot-btn').style.display = 'none';
+
+  // Reset all sub-screens
+  showOpSub('boot');
+  document.getElementById('op-boot-lines').innerHTML = '';
+
+  // Update pin icons
+  for (let i = 0; i < 3; i++) document.getElementById('lpin' + i).classList.remove('broken');
+
+  // Boot lines
+  currentOp.bootLines.forEach((line, i) => {
+    setTimeout(() => {
+      const d = document.createElement('div');
+      d.className = 'boot-line';
+      d.textContent = '> ' + line;
+      document.getElementById('op-boot-lines').appendChild(d);
+      setTimeout(() => d.classList.add('show'), 50);
+      if (i === currentOp.bootLines.length - 1) {
+        setTimeout(() => { document.getElementById('op-boot-btn').style.display = 'block'; }, 400);
+      }
+    }, i * 200);
+  });
+
+  showScreen('operative');
+}
+
+function backToDirectory() {
+  showScreen('directory');
+  renderDirectory();
+}
+
+// ── LOCK ───────────────────────────────────────────────────────
+function startLock() {
+  showOpSub('lock');
+  generateSweetSpot();
+  updatePinIcons();
+  setupDrag();
+  // Reset cylinder
+  document.getElementById('cylinder').style.transform = 'translate(-50%,-50%) rotate(0deg)';
+  document.getElementById('pin-handle').style.left = '0px';
+  document.getElementById('pin-handle').classList.remove('hot','perfect');
+  document.getElementById('lock-msg').textContent = 'POSITION THE BOBBY PIN. APPLY PRESSURE TO TURN.';
+}
+
+function generateSweetSpot() {
+  sweetSpot = 15 + Math.random() * 70;
+}
+
+let dragSetup = false;
+function setupDrag() {
+  if (dragSetup) return;
+  dragSetup = true;
+  const track = document.getElementById('pin-track');
+  const handle = document.getElementById('pin-handle');
+
+  handle.addEventListener('mousedown', e => { dragging = true; e.preventDefault(); });
+  handle.addEventListener('touchstart', e => { dragging = true; e.preventDefault(); }, {passive:false});
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging || !gameActive) return;
+    const rect = track.getBoundingClientRect();
+    const trackW = rect.width - 28;
+    pinPos = Math.max(0, Math.min(100, ((e.clientX - rect.left - 14) / trackW) * 100));
+    updatePin();
+  });
+
+  document.addEventListener('touchmove', e => {
+    if (!dragging || !gameActive) return;
+    const rect = track.getBoundingClientRect();
+    const trackW = rect.width - 28;
+    pinPos = Math.max(0, Math.min(100, ((e.touches[0].clientX - rect.left - 14) / trackW) * 100));
+    updatePin();
+    e.preventDefault();
+  }, {passive:false});
+
+  document.addEventListener('mouseup', () => dragging = false);
+  document.addEventListener('touchend', () => dragging = false);
+}
+
+function updatePin() {
+  const handle = document.getElementById('pin-handle');
+  const track = document.getElementById('pin-track');
+  const trackW = track.offsetWidth - 28;
+  handle.style.left = (pinPos / 100 * trackW) + 'px';
+
+  const dist = Math.abs(pinPos - sweetSpot);
+  const zone = 22; // generous sweet spot
+  handle.classList.remove('hot','perfect');
+  if (dist < zone * 0.45) {
+    handle.classList.add('perfect');
+    document.getElementById('lock-msg').textContent = 'SWEET SPOT FOUND — HOLD SCREWDRIVER NOW';
+  } else if (dist < zone) {
+    handle.classList.add('hot');
+    document.getElementById('lock-msg').textContent = 'GETTING WARMER — KEEP ADJUSTING';
+  } else {
+    document.getElementById('lock-msg').textContent = 'POSITION THE BOBBY PIN. APPLY PRESSURE TO TURN.';
+  }
+}
+
+function getProximity() {
+  const dist = Math.abs(pinPos - sweetSpot);
+  const zone = 22;
+  if (dist < zone * 0.45) return 'perfect';
+  if (dist < zone) return 'hot';
+  return 'cold';
+}
+
+function startPress(e) {
+  if (!gameActive) return;
+  if (e) e.preventDefault();
+  pressing = true;
+  document.getElementById('screw-btn').classList.add('pressing');
+  pressTick();
+}
+
+function endPress() {
+  pressing = false;
+  document.getElementById('screw-btn').classList.remove('pressing');
+  if (locked && turnAmount > 0) {
+    turnAmount = Math.max(0, turnAmount - 6);
+    updateCylinder();
+  }
+}
+
+function pressTick() {
+  if (!pressing || !gameActive) return;
+  const prox = getProximity();
+  if (prox === 'perfect') {
+    turnAmount = Math.min(100, turnAmount + 5);
+    if (Math.random() < 0.008) { snapPin(); return; } // 0.8% chance at perfect
+  } else if (prox === 'hot') {
+    turnAmount = Math.min(35, turnAmount + 1.5);
+    if (Math.random() < 0.02) { snapPin(); return; } // 2% at hot
+  } else {
+    if (Math.random() < 0.055) { snapPin(); return; } // 5.5% at cold
+    turnAmount = Math.max(0, turnAmount - 2);
+  }
+  updateCylinder();
+  if (turnAmount >= 100) { unlock(); return; }
+  if (pressing) setTimeout(pressTick, 50);
+}
+
+function updateCylinder() {
+  const deg = (turnAmount / 100) * 90;
+  document.getElementById('cylinder').style.transform = `translate(-50%,-50%) rotate(${deg}deg)`;
+}
+
+function snapPin() {
+  pressing = false;
+  document.getElementById('screw-btn').classList.remove('pressing');
+  pinsLeft--;
+  turnAmount = 0;
+  updateCylinder();
+  updatePinIcons();
+  document.getElementById('terminal').classList.add('shake');
+  setTimeout(() => document.getElementById('terminal').classList.remove('shake'), 400);
+  if (pinsLeft <= 0) { setTimeout(showFail, 600); return; }
+  document.getElementById('lock-msg').textContent = `BOBBY PIN BROKEN — ${pinsLeft} REMAINING`;
+  generateSweetSpot();
+  document.getElementById('pin-handle').style.left = '0px';
+  document.getElementById('pin-handle').classList.remove('hot','perfect');
+  pinPos = 0;
+  setTimeout(() => {
+    if (gameActive) document.getElementById('lock-msg').textContent = 'POSITION THE BOBBY PIN. APPLY PRESSURE TO TURN.';
+  }, 1500);
+}
+
+function updatePinIcons() {
+  for (let i = 0; i < 3; i++) {
+    document.getElementById('lpin' + i).classList.toggle('broken', i >= pinsLeft);
+  }
+}
+
+function unlock() {
+  gameActive = false; locked = false;
+  document.getElementById('cylinder').style.transform = 'translate(-50%,-50%) rotate(90deg)';
+  document.getElementById('lock-msg').textContent = 'ACCESS GRANTED';
+  setTimeout(() => showGoatIntro(), 900);
+}
+
+function showFail() {
+  gameActive = false;
+  document.getElementById('fail-title').textContent = 'ALL BOBBY PINS BROKEN';
+  document.getElementById('fail-text').innerHTML = currentOp.failText.replace(/\n/g,'<br>');
+  showOpSub('fail');
+  let count = 10;
+  document.getElementById('countdown').textContent = count;
+  const timer = setInterval(() => {
+    count--;
+    document.getElementById('countdown').textContent = count;
+    if (count <= 0) {
+      clearInterval(timer);
+      pinsLeft = 3; pinPos = 0; turnAmount = 0; locked = true; gameActive = true;
+      updatePinIcons();
+      updateCylinder();
+      document.getElementById('pin-handle').style.left = '0px';
+      document.getElementById('pin-handle').classList.remove('hot','perfect');
+      generateSweetSpot();
+      document.getElementById('lock-msg').textContent = 'POSITION THE BOBBY PIN. APPLY PRESSURE TO TURN.';
+      showOpSub('lock');
+    }
+  }, 1000);
+}
+
+// ── GOAT ───────────────────────────────────────────────────────
+function showGoatIntro() {
+  document.getElementById('goat-intro-flavor').textContent = currentOp.goatIntro;
+  showOpSub('goat-intro');
+}
+
+function startGoat() {
+  qIndex = 0;
+  showOpSub('goat');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = currentOp.questions[qIndex];
+  document.getElementById('q-label').textContent = `QUESTION ${qIndex + 1} OF ${currentOp.questions.length}`;
+  document.getElementById('q-text').textContent = q.q;
+  document.getElementById('q-progress').style.width = (qIndex / currentOp.questions.length * 100) + '%';
+  const keys = ['A','B','C','D'];
+  document.getElementById('answers').innerHTML = q.a.map((a, i) =>
+    `<button class="answer" onclick="nextQ(this)"><span class="akey">[${keys[i]}]</span>${a}</button>`
+  ).join('');
+}
+
+function nextQ(el) {
+  el.classList.add('selected');
+  setTimeout(() => {
+    qIndex++;
+    if (qIndex >= currentOp.questions.length) {
+      showOpSub('processing');
+      runProcessing();
+    } else {
+      renderQuestion();
+    }
+  }, 280);
+}
+
+function runProcessing() {
+  const container = document.getElementById('proc-lines');
+  container.innerHTML = '';
+  currentOp.procLines.forEach((line, i) => {
+    const d = document.createElement('div');
+    d.className = 'proc-line';
+    d.textContent = '> ' + line;
+    container.appendChild(d);
+    setTimeout(() => {
+      d.classList.add('show');
+      if (i === currentOp.procLines.length - 1) {
+        setTimeout(() => showReveal(), 1200);
+      }
+    }, i * 420 + 600);
+  });
+}
+
+function showReveal() {
+  markAccessed(currentOp.id);
+  document.getElementById('r-clearance').textContent = currentOp.clearance;
+  document.getElementById('r-name').textContent = 'OPERATIVE ' + currentOp.name;
+  document.getElementById('r-role').textContent = currentOp.role;
+  document.getElementById('r-badge').textContent = currentOp.badge;
+  document.getElementById('r-file-text').textContent = currentOp.file;
+  document.getElementById('r-ch-name').textContent = currentOp.channel;
+  document.getElementById('r-ch-desc').textContent = currentOp.channelDesc;
+  document.getElementById('r-overseer-msg').textContent = currentOp.overseer;
+  showOpSub('reveal');
+}
+
+// ── HELPERS ────────────────────────────────────────────────────
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+}
+
+function showOpSub(name) {
+  const subs = ['boot','lock','fail','goat-intro','goat','processing','reveal'];
+  subs.forEach(s => {
+    const el = document.getElementById('op-sub-screen-' + s);
+    if (el) el.style.display = 'none';
+  });
+  const target = document.getElementById('op-sub-screen-' + name);
+  if (target) target.style.display = 'block';
+}
+</script>
+</body>
+</html>
